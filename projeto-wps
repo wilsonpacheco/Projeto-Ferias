@@ -1,0 +1,301 @@
+  #----- EMPRESA DE REMÉDIO-----#
+
+-----CRIAÇÃO DAS TABELAS-----
+
+CREATE TABLE WPS_CLIENTES
+(CD_CLI NUMBER (10) NOT NULL,
+DATA_CADASTRO DATE,
+NOME VARCHAR2(50) NOT NULL,
+CPF VARCHAR2(12) NOT NULL,
+CONSTRAINT CD_CLI_PK PRIMARY KEY(CD_CLI)
+);
+
+CREATE TABLE WPS_FORNECEDOR
+(CD_FORNECEDOR INTEGER NOT NULL,
+NOME_FORNERCEDOR VARCHAR2(50),
+TP_FORNECEDOR CHAR(1),
+CD_PRODUTO INTEGER NOT NULL,
+CONSTRAINT PK_FORNECEDOR PRIMARY KEY (CD_FORNECEDOR)
+);
+
+CREATE TABLE WPS_PRODUTO
+(CD_PRODUTO INTEGER NOT NULL,
+NOME_PRODUTO VARCHAR2(20),
+VL_PRODUTO NUMBER (10,2),
+CD_FORNECEDOR INTEGER,
+CONSTRAINT PK_PRODUTO PRIMARY KEY (CD_PRODUTO)
+);
+
+CREATE TABLE WPS_MARCAS
+(CD_MARCA INTEGER,
+MARCAS VARCHAR2 (40),
+CONSTRAINT PK_MARCAS PRIMARY KEY(CD_MARCA)
+);
+
+CREATE TABLE WPS_LOG
+(CD_LOG INTEGER NOT NULL,
+USUARIO VARCHAR2(20),
+DATA_ALTERACAO DATE DEFAULT SYSDATE,
+VL_PRODUTO_ANTIGO NUMBER(10,2),
+VL_PRODUTO_NOVO NUMBER(10,2),
+OPERACAO VARCHAR2(20),
+CONSTRAINT PK_LOGS PRIMARY KEY(CD_LOG)
+);
+
+-----CRIAÇAO DAS CHAVES ESTRANGEIRAS-----
+
+ALTER TABLE WPS_FORNECEDOR
+ADD CONSTRAINT FK_FORN FOREIGN KEY(CD_CLI) REFERENCES WPS_CLIENTES;
+
+ALTER TABLE WPS_PRODUTO
+ADD CONSTRAINT FK_PROD FOREIGN KEY(CD_FORNECEDOR) REFERENCES WPS_FORNECEDOR;
+
+ALTER TABLE WPS_MARCAS
+ADD CONSTRAINT FK_MAR FOREIGN KEY(CD_FORNECEDOR) REFERENCES WPS_FORNECEDOR;
+
+-----CRIAÇAO DE SEQUENCES-----
+
+CREATE SEQUENCE WPS_SEQ_CLIENTES START WITH 1;
+CREATE SEQUENCE WPS_SEQ_FORNECEDOR START WITH 1;
+CREATE SEQUENCE WPS_SEQ_PRODUTO START WITH 1;
+CREATE SEQUENCE WPS_SEQ_MARCAS START WITH 1;
+CREATE SEQUENCE WPS_SEQ_LOG START WITH 1;
+
+-----POPULAÇÃO DAS TABELAS-----
+
+INSERT INTO WPS_CLIENTES VALUES (WPS_SEQ_CLIENTES.NEXTVAL, SYSDATE-1, 'wilson', '11060902351');
+INSERT INTO WPS_CLIENTES VALUES (WPS_SEQ_CLIENTES.NEXTVAL, SYSDATE, 'carlos', '031719202351');
+INSERT INTO WPS_CLIENTES VALUES (WPS_SEQ_CLIENTES.NEXTVAL, SYSDATE, 'pedro', '60030902555');
+INSERT INTO WPS_CLIENTES VALUES (WPS_SEQ_CLIENTES.NEXTVAL, SYSDATE, 'andre', '77720402334');
+INSERT INTO WPS_CLIENTES VALUES (WPS_SEQ_CLIENTES.NEXTVAL, SYSDATE-2, 'carlos', '30460402999');
+
+INSERT INTO WPS_FORNECEDOR VALUES (WPS_SEQ_FORNECEDOR.NEXTVAL, 'Agripel', 'J', 1);
+INSERT INTO WPS_FORNECEDOR VALUES (WPS_SEQ_FORNECEDOR.NEXTVAL, 'Neo quimica', 'J', 2);
+INSERT INTO WPS_FORNECEDOR VALUES (WPS_SEQ_FORNECEDOR.NEXTVAL, 'Mondial', 'F', 3);
+INSERT INTO WPS_FORNECEDOR VALUES (WPS_SEQ_FORNECEDOR.NEXTVAL, 'Maxi power', 'F', 4);
+INSERT INTO WPS_FORNECEDOR VALUES (WPS_SEQ_FORNECEDOR.NEXTVAL, 'Zip off', 'J', 5);
+
+INSERT INTO WPS_PRODUTO VALUES (WPS_SEQ_PRODUTO.NEXTVAL, 'vitamina C', 2.00, 1);
+INSERT INTO WPS_PRODUTO VALUES (WPS_SEQ_PRODUTO.NEXTVAL, 'xarope infantil', 7.50, 2);
+INSERT INTO WPS_PRODUTO VALUES (WPS_SEQ_PRODUTO.NEXTVAL, 'neosadina caixa', 12.0, 1);
+INSERT INTO WPS_PRODUTO VALUES (WPS_SEQ_PRODUTO.NEXTVAL, 'gripol 100ml', 6.99, 4);
+INSERT INTO WPS_PRODUTO VALUES (WPS_SEQ_PRODUTO.NEXTVAL, 'vitamina AZ', 3.00, 5);
+
+INSERT INTO WPS_MARCAS VALUES (WPS_SEQ_MARCAS.NEXTVAL, 'cirfarma', 1);
+INSERT INTO WPS_MARCAS VALUES (WPS_SEQ_MARCAS.NEXTVAL, 'azul', 2);
+INSERT INTO WPS_MARCAS VALUES (WPS_SEQ_MARCAS.NEXTVAL, 'geolab', 3);
+INSERT INTO WPS_MARCAS VALUES (WPS_SEQ_MARCAS.NEXTVAL, 'next', 4);
+INSERT INTO WPS_MARCAS VALUES (WPS_SEQ_MARCAS.NEXTVAL, 'azul', 1);
+
+-----PROCEDURE: INSERE CLIENTES-----
+
+CREATE OR REPLACE PROCEDURE PRC_INSERE_CLIENTE
+
+  (pdata_cadastro  IN DATE,
+   pnome           IN VARCHAR2,
+   pcpf            IN VARCHAR2)
+
+IS
+
+BEGIN
+
+INSERT INTO WPS_CLIENTES (
+  cd_cli,
+  data_cadastro,
+  nome,
+  cpf)
+VALUES (
+  WPS_SEQ_CLIENTES.NEXTVAL,
+  pdata_cadastro,
+  pnome,
+  pcpf);
+
+EXCEPTION
+WHEN OTHERS THEN
+Raise_Application_Error (-20001, 'Erro Oracle: '||SQLCODE ||' - '||SQLERRM);
+END;
+
+-----EXECUTANDO A PROCEDURE: prc_insere_cliente
+EXEC prc_insere_cliente (SYSDATE, 'cintia', '44439049020');
+COMMIT;
+
+-----PROCEDURE AUMENTA_VL_PRODUTO-----
+
+CREATE OR REPLACE PROCEDURE PRC_AUMENTA_VL_PRODUTO
+  (pcd_produto  IN INTEGER,
+   pporcentagem IN INTEGER)
+
+IS
+
+BEGIN
+  UPDATE WPS_PRODUTO SET
+  vl_produto = vl_produto * (1 + pporcentagem / 100)
+  WHERE cd_produto = pcd_produto;
+
+EXCEPTION
+WHEN OTHERS THEN   -- ser acontecer qualquer outras excesões
+Raise_Application_Error (-20001, 'Erro Oracle: '||SQLCODE ||' - '||SQLERRM);
+END;
+
+--EXECUTANDO A PROCEDURE: aumenta_vl_produto
+EXEC prc_aumenta_vl_produto (1, 1);
+COMMIT;
+
+-----PROCEDURE CONSULTAR CLIENTES-----
+
+CREATE OR REPLACE PROCEDURE prc_consultar_clientes(
+    pcd_cli IN INTEGER,
+    pdata   OUT DATE,
+    pnome   OUT VARCHAR2,
+    pcpf    OUT VARCHAR2)
+
+IS
+
+BEGIN
+SELECT
+    data_cadastro,
+    nome,
+    cpf
+INTO
+    pdata,
+    pnome,
+    pcpf
+FROM wps_clientes
+WHERE cd_cli = pcd_cli;
+
+EXCEPTION
+WHEN No_Data_Found THEN
+Raise_Application_Error (-20098, 'Cliente nao existe: '||SQLCODE ||' - '||SQLERRM);
+WHEN OTHERS THEN
+Raise_Application_Error (-20099, 'Erro Oracle: '||SQLCODE ||' - '||SQLERRM);
+END;
+
+-----EXECUTANDO A PROCEDURE: consultar clientes
+
+DECLARE
+  reg wps_clientes%ROWTYPE;
+BEGIN
+  prc_consultar_clientes (6, reg.data_cadastro, reg.nome, reg.cpf);
+  Dbms_Output.Put_Line('Data do cadastro: '||To_Char(reg.data_cadastro, 'DD/MM/RRRR')||' - '||
+                       'Nome do cliente: '||InitCap(reg.nome)||' - '||
+                       'CPF do cliente: '||reg.cpf);
+END;
+COMMIT;
+
+-----FUNCTION VERIFICA SE O CODIGO DO PRODUTO EXISTE-----
+
+CREATE OR REPLACE FUNCTION fnc_verificar_produto_existe(
+    pcd_produto IN INTEGER)
+    RETURN BOOLEAN
+
+IS
+  vcd_produto wps_produto.cd_produto%TYPE;
+
+BEGIN
+  SELECT cd_produto
+  INTO vcd_produto
+  FROM wps_produto
+  WHERE cd_produto = pcd_produto;
+  RETURN (TRUE);
+
+EXCEPTION
+ WHEN OTHERS THEN
+ RETURN (FALSE);
+
+END;
+
+-----EXECUTANDO A FUNCTION-----
+DECLARE
+  vcd_produto wps_produto.cd_produto%TYPE := &codigo;
+BEGIN
+  IF fnc_verificar_produto_existe(vcd_produto) = TRUE
+  THEN
+  Dbms_Output.Put_Line(vcd_produto||' - '||' Produto exite.');
+  ELSE
+  Dbms_Output.Put_Line(vcd_produto||' - '||' Produto nao exite.');
+  END IF;
+END;
+
+-----TRIGGERS-----
+
+-- Não é possivel cadastrar na tabela wps_clientes fora do horário comercial
+CREATE OR REPLACE TRIGGER trg_valida_horario    -- Nível de comando
+BEFORE INSERT OR UPDATE OR DELETE
+ON wps_clientes
+
+BEGIN
+
+  IF (To_Char(SYSDATE, 'DAY') IN ('sabado', 'domingo') OR
+     To_Number(To_Char(SYSDATE, 'HH24')) NOT BETWEEN 8 AND 18)
+  THEN
+     CASE
+        WHEN INSERTING
+        THEN
+          Raise_Application_Error (-20001, 'O cadastro do cliente só permitido em dias de semana e no horario comercial.');
+        WHEN UPDATING
+        THEN
+          Raise_Application_Error (-20002, 'A atualização do cliente só permitido em dias de semana e no horario comercial.');
+        WHEN DELETING
+        THEN
+          Raise_Application_Error (-20003, 'A deleção do cliente só permitido em dias de semana e no horario comercial.');
+      END CASE;
+  END IF;
+END;
+
+--Testando a validação da Trigger
+EXEC prc_insere_cliente (SYSDATE, 'cintia', '44439049020');
+DELETE FROM wps_clientes;
+
+--Desabilitar e habilitar a Trigger
+ALTER TRIGGER trg_valida_horario DISABLE;
+ALTER TRIGGER trg_valida_horario ENABLE;
+
+-- Auditoria da tabela wps_produto
+CREATE OR REPLACE TRIGGER trg_audita_produto  -- Nível de linha
+AFTER INSERT OR UPDATE OF vl_produto OR DELETE
+ON wps_produto
+FOR EACH ROW
+
+BEGIN
+
+  IF (DELETING) THEN
+        INSERT INTO wps_log (cd_log,
+                             usuario,
+                             data_alteracao,
+                             operacao)
+
+        VALUES (wps_seq_log.NEXTVAL,
+                USER,
+                SYSDATE,
+                'DELETE');
+  ELSIF (INSERTING) THEN
+        INSERT INTO wps_log (cd_log,
+                             usuario,
+                             data_alteracao,
+                             operacao)
+
+        VALUES (wps_seq_log.NEXTVAL,
+                USER,
+                SYSDATE,
+                'INSERE');
+
+  ELSIF (UPDATING ('vl_produto') ) THEN
+        INSERT INTO wps_log
+        VALUES (wps_seq_log.NEXTVAL,
+                USER,
+                SYSDATE,
+                :old.vl_produto,
+                :new.vl_produto,
+                'UPDATE');
+  END IF;
+END;
+
+--Testando a Trigger
+
+UPDATE WPS_PRODUTO SET
+VL_PRODUTO = VL_PRODUTO * 1.10
+INSERT INTO wps_produto VALUES (wps_seq_produto.NEXTVAL, 'Neosoro 10ml', 5.50, 2);
+DELETE FROM wps_produto WHERE cd_produto = 21
+SELECT * FROM WPS_LOG
+
+                                -----FIM-----
